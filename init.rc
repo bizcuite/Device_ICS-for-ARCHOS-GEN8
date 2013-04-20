@@ -87,7 +87,7 @@ loglevel 8
     mkdir /sd-ext 0771 system system
     mkdir /sdcard 0777 root root
 
-    write /proc/sys/kernel/panic_on_oops 1
+    write /proc/sys/kernel/panic_on_oops 0
     write /proc/sys/kernel/hung_task_timeout_secs 0
     write /proc/cpu/alignment 4
     write /proc/sys/kernel/sched_latency_ns 10000000
@@ -136,7 +136,7 @@ loglevel 8
 
      mount ext4 /dev/block/mmcblk1p1 /mnt/storage
      mount vfat /dev/block/mmcblk1p1 /mnt/storage
-    mount ext3 /dev/block/mmcblk0p2 /mnt/system
+     mount ext3 /dev/block/mmcblk0p2 /mnt/system
 
 #    mount ext3 /dev/block/mmcblk0p4 /data nosuid nodev
     mount ext4 loop@/mnt/storage/data_ICS.img /data nosuid nodev
@@ -159,7 +159,7 @@ loglevel 8
     mkdir /cache/lost+found 0770 root root
 
 #fix permissions for market - thanks Wilsey
-    exec /system/xbin/sh /system/xbin/fix_permissions
+#    exec /system/xbin/sh /system/xbin/fix_permissions
 
 
 # on post-fs-data
@@ -235,47 +235,16 @@ loglevel 8
 #UPGRADE
 
 ####TEST USB DRIVER
-
-
-insmod /lib/modules/output.ko
-insmod /lib/modules/pcbc.ko
-insmod /lib/modules/st_drv.ko
-insmod /lib/modules/hso.ko
-insmod /lib/modules/hmac.ko
-insmod /lib/modules/sit.ko
-insmod /lib/modules/ramzswap_drv.ko
-insmod /lib/modules/tunnel4.ko
-
-
 #    insmod /lib/modules/musb_hdrc.ko mode_default=1
-#    insmod /lib/modules/g_android.ko
-
-#    insmod /lib/modules/usb_deug.ko
     insmod /lib/modules/musb_hdrc.ko mode_default=2
-#    insmod /lib/modules/cdc-acm.ko
     insmod /lib/modules/gadgetfs.ko
     insmod /lib/modules/g_android.ko
-#    insmod /lib/modules/g_blockdev_storage.ko
-#    insmod /lib/modules/g_cdc.ko
-#    insmod /lib/modules/g_ether.ko
-#    insmod /lib/modules/g_file_storage.ko file=/dev/block/mmcblk1p1
-#    insmod /lib/modules/g_serial.ko
-#    insmod /lib/modules/g_zero.ko
-#    insmod /lib/modules/keyspan.ko
-#    insmod /lib/modules/musb_hdrc.ko
-#    insmod /lib/modules/usbserial.ko
-
-
-exec /system/xbin/log_kernel.sh
 
 #####END TEST USB DRIVER
-
- # alsa sound
+# alsa sound
     mkdir /dev/snd
-
-    #create nodes
-
-    exec /system/xbin/create_nodes_alsa.sh
+#create nodes
+exec /system/xbin/create_nodes_alsa.sh
 
 # change permissions for alsa nodes
     chown audio audio /dev/snd/controlC0
@@ -305,15 +274,11 @@ exec /system/xbin/log_kernel.sh
     insmod /lib/modules/omap_resizer.ko
     insmod /lib/modules/omap_voutlib.ko
     insmod /lib/modules/omap_vout.ko vid1_static_vrfb_alloc=0
-#    insmod /lib/modules/mailbox.ko
-#    insmod /lib/modules/mailbox_mach.ko
-#    insmod /lib/modules/dspbridge.ko
-#    insmod /lib/modules/bridgedriver.ko base_img=/system/lib/dsp/baseimage.dof
     insmod /lib/modules/hdmitx.ko
     insmod /lib/modules/nwolc.ko
     insmod /lib/modules/fuse.ko
     insmod /lib/modules/tun.ko
-
+    insmod /lib/modules/xt_qtaguid.ko
 
 # change permissions for bridge.  Symlink search directory
     chmod 0777 /dev/DspBridge
@@ -375,7 +340,7 @@ exec /system/xbin/log_kernel.sh
     chmod 0660 /dev/ttyS0
     chown bluetooth bluetooth /dev/ttyS0
     chown bluetooth bluetooth /sys/class/rfkill/rfkill0/state
-    chmod 0660 /sys/class/rfkill/rfkill0/state
+    chmod 0777 /sys/class/rfkill/rfkill0/state
     write /sys/class/rfkill/rfkill0/state 0
 
 # devos, create all the /dev needed for avos
@@ -414,7 +379,6 @@ exec /system/xbin/log_kernel.sh
     #setprop vold.post_fs_data_done 1
 
 on boot
-#    setprop dalvik.vm.heapsize 24m
 # basic network init
     ifup lo
     hostname localhost
@@ -490,6 +454,11 @@ on boot
     # Enabling SmartReflex for Zoom3 OMAP3630
     write /sys/power/sr_vdd1_autocomp 1
     write /sys/power/sr_vdd2_autocomp 1
+
+    # Enabling Smartreflex
+    write /debug/pm_debug/smartreflex/sr_mpu/autocomp 1 
+    write /debug/pm_debug/smartreflex/sr_core/autocomp 1
+
 
     # Enabling multi-touch
     write /sys/module/hid_hanvon/parameters/tsp_emulation  N
@@ -698,7 +667,7 @@ service drm /system/bin/drmserver
 
 service media /system/bin/mediaserver
     class main
-    user media root
+    user media
 #    group audio camera inet net_bt net_bt_admin 
     group system audio camera graphics inet net_bt net_bt_admin net_raw system net_bw_acct drmrpc
     ioprio rt 4
@@ -706,10 +675,28 @@ service media /system/bin/mediaserver
 service dbus /system/bin/logwrapper /system/bin/dbus-daemon --system --nofork
     class main
     socket dbus stream 660 bluetooth bluetooth
+    socket bluetooth stream 660 bluetooth bluetooth
+    socket dbus_bluetooth stream 660 bluetooth bluetooth
     user bluetooth
-    group bluetooth net_bt_admin misc system
+    group bluetooth net_bt_admin misc inet
 
-service bluetoothd /system/bin/bluetoothd -n
+
+#service bluetoothd /system/bin/logwrapper /system/bin/bluetoothd -n /system/etc/bluetooth/main.conf
+#   class main
+#   socket bluetooth stream 660 bluetooth bluetooth
+#   socket dbus_bluetooth stream 660 bluetooth bluetooth
+   # init.rc does not yet support applying capabilities, so run as root and
+   # let bluetoothd drop uid to bluetooth with the right linux capabilities
+#   group bluetooth net_bt_admin misc
+#   disabled
+
+service uim /system/bin/logwrapper /system/xbin/uim /dev/ttyS0 3000000 1 /sys/uim/pid 19
+   class main
+   user root
+   group net_bt_admin media bluetooth system
+   oneshot
+
+service bluetoothd /system/bin/logwrapper /system/bin/bluetoothd -n /system/etc/bluetooth/main.conf
    class main
    socket bluetooth stream 660 bluetooth bluetooth
    socket dbus_bluetooth stream 660 bluetooth bluetooth
@@ -718,47 +705,48 @@ service bluetoothd /system/bin/bluetoothd -n
    group bluetooth net_bt_admin misc
    disabled
 
-service uim /system/bin/logwrapper /system/xbin/uim /dev/ttyS0 3000000 1 /sys/uim/pid 19
-   class core
-   user root
-   group net_bt_admin media bluetooth system
-   oneshot
 
-service hciattach /system/bin/hciattach -l 
-    user root
+#service hciattach /system/bin/logwrapper /system/bin/hciattach -l 
+#    class main
+#    user root
 # changing user to root from bluetooth is a potential security issue
 # service hciattach_legacy is used instead of hciattach because, we dont
 # have nodes named ttyHS0
-    group bluetooth net_bt_admin misc
-    disabled
-    oneshot
+#    group bluetooth net_bt_admin misc
+#    disabled
+#    oneshot
 
-service hciattach_legacy /system/bin/hciattach -n /dev/ttyS0 texas 3000000
+service hciattach_legacy /system/bin/logwrapper /system/bin/hciattach -n /dev/ttyS0 texas 3000000
+    class main
     user root
 # changing user to root from bluetooth is a potential security issue
     group bluetooth net_bt_admin misc
     disabled
     oneshot
 
-service hfag /system/bin/sdptool add --channel=10 HFAG
+service hfag /system/bin/logwrapper /system/bin/sdptool add --channel=10 HFAG
+    class main
     user bluetooth
     group bluetooth net_bt_admin
     disabled
     oneshot
 
-service hsag /system/bin/sdptool add --channel=11 HSAG
+service hsag /system/bin/logwrapper /system/bin/sdptool add --channel=11 HSAG
+    class main
     user bluetooth
     group bluetooth net_bt_admin
     disabled
     oneshot
 
-service opush /system/bin/sdptool add --channel=12 OPUSH
+service opush /system/bin/logwrapper /system/bin/sdptool add --channel=12 OPUSH
+    class main
     user bluetooth
     group bluetooth net_bt_admin
     disabled
     oneshot
 
-service pbap /system/bin/sdptool add --channel=19 PBAP
+service pbap /system/bin/logwrapper /system/bin/sdptool add --channel=19 PBAP
+    class main
     user bluetooth
     group bluetooth net_bt_admin
     disabled
@@ -802,18 +790,29 @@ service wlan_loader /system/bin/wlan_loader -i /data/misc/wifi/tiwlan.ini -f /sy
     disabled
     oneshot
 
-service wpa_supplicant /system/bin/wpa_supplicant -dd -Dtiwlan0 -itiwlan0 -c /data/misc/wifi/wpa_supplicant.conf
+#service wpa_supplicant /system/bin/wpa_supplicant -dd -Dtiwlan0 -itiwlan0 -c /data/misc/wifi/wpa_supplicant.conf
 	#   we will start as root and wpa_supplicant will switch to user wifi
 	#   after setting up the capabilities required for WEXT
 	#   user wifi
 	#   group wifi inet keystore
-	class main
-	socket wpa_tiwlan0 dgram 660 wifi wifi
-	disabled
-	oneshot
+#	class main
+#	socket wpa_tiwlan0 dgram 660 wifi wifi
+#	disabled
+#	oneshot
 
-service dhcpcd_tiwlan0 /system/bin/dhcpcd -aABKL
+#service dhcpcd_tiwlan0 /system/bin/dhcpcd -aABKL
+#    class main
+#    disabled
+#    oneshot
+
+service wpa_supplicant /system/bin/wpa_supplicant -Dtiwlan0 -itiwlan0 -c /data/misc/wifi/wpa_supplicant.conf
     class main
+    socket wpa_tiwlan0 dgram 660 wifi wifi
+    disabled
+    oneshot
+
+service dhcpcd_tiwlan0 /system/bin/dhcpcd -ABKL -d
+   class main
     disabled
     oneshot
 
@@ -846,8 +845,9 @@ service iprenew_bnep0 /system/bin/dhcpcd -n
 
 
 service pvrsrvinit /system/bin/pvrsrvinit
-    class main
+    class core
     user root
+    group graphics system
     oneshot
 
 service load_alsa /system/xbin/load_alsa.sh
@@ -862,16 +862,19 @@ service  omx_pm /system/bin/logwrapper /system/bin/OMXPolicyManager
 service battery /system/bin/batteryd -d
 	class main
 
+#service baseimage_a /system/bin/logwrapper /system/bin/cexec.out -v -T /system/lib/dsp/baseimage.dof
+#    class core
+#    user  root
+#    group root graphics
+#    oneshot
 
-service tsenabler /system/bin/logwrapper /system/bin/ts_test/usb_ts_enable --verify
-    class core 
-    oneshot
-
+# load DSP firmware
 service baseimage_a /system/bin/logwrapper /system/bin/cexec.out -v -T /system/lib/dsp/baseimage.dof
     class core
-    user  root
-    group root graphics
+    user root
+    group system audio camera graphics inet net_bt net_bt_admin net_raw media
     oneshot
+
 
 service update_market /system/bin/logwrapper /system/xbin/sh /system/xbin/update_market.sh
     user root
@@ -879,6 +882,12 @@ service update_market /system/bin/logwrapper /system/xbin/sh /system/xbin/update
     oneshot
 
 service kernel_log /system/bin/logwrapper /system/xbin/sh /system/xbin/log_kernel1.sh
+    user root
+    group root
+    oneshot
+
+#service bluetooth_start /system/xbin/sh /system/xbin/start_BT.sh 
+service bluetooth_start /system/xbin/hciconfig hci0 up
     user root
     group root
     oneshot

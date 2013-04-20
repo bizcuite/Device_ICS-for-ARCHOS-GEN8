@@ -17,10 +17,10 @@
 
 #define LOG_TAG "ALSAModule"
 #include <utils/Log.h>
-#include <cutils/properties.h>
-#include <linux/ioctl.h>
+
 #include "AudioHardwareALSA.h"
 #include <media/AudioRecord.h>
+#include <cutils/properties.h>
 
 #undef DISABLE_HARWARE_RESAMPLING
 
@@ -31,18 +31,17 @@
         strcat(x, y);
 
 #ifndef ALSA_DEFAULT_SAMPLE_RATE
-#define ALSA_DEFAULT_SAMPLE_RATE 44100 // in Hz
+#define ALSA_DEFAULT_SAMPLE_RATE 44100	 // in Hz
 #endif
 
 namespace android_audio_legacy
 {
 
-static int      s_device_open(const hw_module_t*, const char*, hw_device_t**);
-static int      s_device_close(hw_device_t*);
+static int s_device_open(const hw_module_t*, const char*, hw_device_t**);
+static int s_device_close(hw_device_t*);
 static status_t s_init(alsa_device_t *, ALSAHandleList &);
-static status_t s_open(alsa_handle_t *, uint32_t,  int, uint32_t);
+static status_t s_open(alsa_handle_t *, uint32_t, int);
 static status_t s_close(alsa_handle_t *);
-static status_t s_standby(alsa_handle_t *);
 static status_t s_route(alsa_handle_t *, uint32_t, int);
 
 static hw_module_methods_t s_module_methods = {
@@ -79,7 +78,6 @@ static int s_device_open(const hw_module_t* module, const char* name,
     dev->open = s_open;
     dev->close = s_close;
     dev->route = s_route;
-    dev->standby = s_standby;
 
     *device = &dev->common;
     return 0;
@@ -88,7 +86,6 @@ static int s_device_open(const hw_module_t* module, const char* name,
 static int s_device_close(hw_device_t* device)
 {
     free(device);
-    device = NULL;
     return 0;
 }
 
@@ -106,35 +103,46 @@ static alsa_handle_t _defaultsOut = {
     devices     : AudioSystem::DEVICE_OUT_ALL,
     curDev      : 0,
     curMode     : 0,
-    curChannels : 0,
     handle      : 0,
     format      : SND_PCM_FORMAT_S16_LE, // AudioSystem::PCM_16_BIT
     channels    : 2,
     sampleRate  : DEFAULT_SAMPLE_RATE,
-    latency     : 2000000, // Desired Delay in usec
-//    bufferSize  : DEFAULT_SAMPLE_RATE / 5, // Desired Number of samples
-//    bufferSize  : DEFAULT_SAMPLE_RATE / 10, // Desired Number of samples
-   bufferSize  : 4096, // Desired Number of samples TEST 4096 like others driver, maybe fix lag in youtube
-//   bufferSize  : 3072, // Desired Number of samples TEST 4096 like others driver, maybe fix lag in youtube
+    latency     : 100000, // Desired Delay in usec
+    bufferSize  : 2048, // Desired Number of samples
     mLock       : PTHREAD_MUTEX_INITIALIZER,
-//    mmap        : 0,
     modPrivate  : 0,
 };
+static const char* builtinAudio = "builtin-audio";
 
 static alsa_handle_t _defaultsIn = {
     module      : 0,
     devices     : AudioSystem::DEVICE_IN_ALL,
     curDev      : 0,
     curMode     : 0,
-    curChannels : 0,
+    handle      : 0,
+    format      : SND_PCM_FORMAT_S16_LE, // AudioSystem::PCM_16_BIT
+    channels    : 2,
+    sampleRate  : DEFAULT_SAMPLE_RATE,	//AudioRecord::DEFAULT_SAMPLE_RATE,
+    latency     : 100000, // Desired Delay in usec
+    bufferSize  : DEFAULT_SAMPLE_RATE/10, // Desired Number of samples
+    mLock       : PTHREAD_MUTEX_INITIALIZER,
+    modPrivate  : 0,
+};
+
+static const char* usbAudio = "usb-audio";
+
+static alsa_handle_t _defaultsUSBIn = {
+    module      : 0,
+    devices     : AudioSystem::DEVICE_IN_ALL,
+    curDev      : 0,
+    curMode     : 0,
     handle      : 0,
     format      : SND_PCM_FORMAT_S16_LE, // AudioSystem::PCM_16_BIT
     channels    : 1,
-    sampleRate  : AudioRecord::DEFAULT_SAMPLE_RATE,
-    latency     : 250000, // Desired Delay in usec
-    bufferSize  : 4096, // Desired Number of samples
+    sampleRate  : DEFAULT_SAMPLE_RATE,	//AudioRecord::DEFAULT_SAMPLE_RATE,
+    latency     : 100000, // Desired Delay in usec
+    bufferSize  : DEFAULT_SAMPLE_RATE/10, // Desired Number of samples
     mLock       : PTHREAD_MUTEX_INITIALIZER,
-//    mmap        : 0,
     modPrivate  : 0,
 };
 
@@ -201,6 +209,86 @@ const char *streamName(alsa_handle_t *handle)
     return snd_pcm_stream_name(direction(handle));
 }
 
+static int getDeviceNum(snd_pcm_stream_t stream, char* card_name)
+{
+	int card = -1, amlcard = -1,dev,err;
+	snd_ctl_t *handle;
+	snd_ctl_card_info_t *info;
+	snd_pcm_info_t *pcminfo;
+	int default_card = -1;
+	char prop[20];
+
+	if (stream == SND_PCM_STREAM_CAPTURE)
+		property_get("snd.card.default.card.capture", prop, "null");
+	else  if (stream == SND_PCM_STREAM_PLAYBACK)
+		property_get("snd.card.default.card.playback", prop, "null");
+	
+	if (strcmp(prop, "null") != 0)
+		default_card = strtol(prop, NULL, 0);	
+	LOGE("prop =  %s, default_card = %d", prop, default_card);
+	
+	snd_ctl_card_info_alloca(&info);
+	snd_pcm_info_alloca(&pcminfo);
+	if (snd_card_next(&card) < 0 || card < 0) {
+		LOGE("no soundcards found...");
+		return -1;
+	}
+	while (card >= 0) {
+		char name[32];
+		sprintf(name, "hw:%d", card);
+		if ((err = snd_ctl_open(&handle, name, 0)) < 0) {
+			LOGE("control open (%i): %s", card, snd_strerror(err));
+			goto next_card;
+		}
+		if ((err = snd_ctl_card_info(handle, info)) < 0) {
+			LOGE("control hardware info (%i): %s", card, snd_strerror(err));
+			snd_ctl_close(handle);
+			goto next_card;
+		}
+		dev = -1;
+		while (1) {
+			if (snd_ctl_pcm_next_device(handle, &dev)<0)
+				LOGE("snd_ctl_pcm_next_device");
+			if (dev < 0){
+				LOGE("(dev < 0)");
+				break;
+			}
+			snd_pcm_info_set_device(pcminfo, dev);
+			snd_pcm_info_set_subdevice(pcminfo, 0);
+			snd_pcm_info_set_stream(pcminfo, stream);
+			if ((err = snd_ctl_pcm_info(handle, pcminfo)) < 0) {
+				if (err != -ENOENT)
+					LOGE("control digital audio info (%i): %s", card, snd_strerror(err));
+				continue;
+			}
+			/*
+			* if default_card >= 0 , or same as the current found card, return it.
+			* if default_card <  0 , enable USB audio first, if found
+			* else, enable builtin-audio
+			*/
+			LOGE("heming add snd_ctl_card_info_get_id=%s, default_card=%d, card=%d",snd_ctl_card_info_get_id(info), default_card, card);
+			// save card name
+			strcpy(card_name, snd_ctl_card_info_get_id(info));
+			LOGD("saved card name: %s\n", card_name);
+			if ((default_card>=0) && (default_card==card))
+				return card;
+			else if ((strncmp(snd_ctl_card_info_get_id(info),"AML",3)==0) && (stream == SND_PCM_STREAM_PLAYBACK)&&(default_card==-1)) //set aml as default playback
+				return card;
+			else if ((strncmp(snd_ctl_card_info_get_id(info),"AML",3)!=0) && (stream == SND_PCM_STREAM_CAPTURE)&&(default_card==-1)) //set usb as default capture
+				return card;
+			else
+				amlcard = card;
+		}
+		snd_ctl_close(handle);
+		next_card:
+		if (snd_card_next(&card) < 0) {
+			LOGE("snd_card_next");
+			break;
+		}
+	}
+	return amlcard;
+}
+
 status_t setHardwareParams(alsa_handle_t *handle)
 {
     snd_pcm_hw_params_t *hardwareParams;
@@ -248,7 +336,7 @@ status_t setHardwareParams(alsa_handle_t *handle)
         goto done;
     }
 
-    LOGV("Set %s PCM format to %s (%s)", streamName(), formatName, formatDesc);
+    LOGW("Set %s PCM format to %s (%s)", streamName(handle), formatName, formatDesc);
 
     err = snd_pcm_hw_params_set_channels(handle->handle, hardwareParams,
             handle->channels);
@@ -258,12 +346,13 @@ status_t setHardwareParams(alsa_handle_t *handle)
         goto done;
     }
 
-    LOGV("Using %i %s for %s.", handle->channels,
-            handle->channels == 1 ? "channel" : "channels", streamName());
+    LOGW("Using %i %s for %s.", handle->channels,
+            handle->channels == 1 ? "channel" : "channels", streamName(handle));
 
+    LOGW("requestedRate=%d\n", requestedRate);
     err = snd_pcm_hw_params_set_rate_near(handle->handle, hardwareParams,
             &requestedRate, 0);
-
+    LOGW("returned Rate=%d, handle->rate=%d\n", requestedRate, handle->sampleRate);
     if (err < 0)
         LOGE("Unable to set %s sample rate to %u: %s",
                 streamName(handle), handle->sampleRate, snd_strerror(err));
@@ -274,7 +363,7 @@ status_t setHardwareParams(alsa_handle_t *handle)
         LOGW("Requested rate (%u HZ) does not match actual rate (%u HZ)",
                 handle->sampleRate, requestedRate);
     else
-        LOGV("Set %s sample rate to %u HZ", stream, requestedRate);
+        LOGI("Set %s sample rate to %u HZ", streamName(handle), requestedRate);
 
 #ifdef DISABLE_HARWARE_RESAMPLING
     // Disable hardware re-sampling.
@@ -319,7 +408,6 @@ status_t setHardwareParams(alsa_handle_t *handle)
             goto done;
         }
         bufferSize = periodSize * 4;
-    LOGI("Buffer size: %d", (int)bufferSize);
         if (bufferSize < handle->bufferSize) bufferSize = handle->bufferSize;
         err = snd_pcm_hw_params_set_buffer_size_near(handle->handle,
                 hardwareParams, &bufferSize);
@@ -453,42 +541,95 @@ static status_t s_init(alsa_device_t *module, ALSAHandleList &list)
     _defaultsOut.bufferSize = bufferSize;
 
     list.push_back(_defaultsOut);
+    
+    bufferSize = _defaultsUSBIn.bufferSize;
 
-    bufferSize = _defaultsIn.bufferSize;
+	    for (size_t i = 1; (bufferSize & ~i) != 0; i <<= 1)
+	        bufferSize &= ~i;
 
-    for (size_t i = 1; (bufferSize & ~i) != 0; i <<= 1)
-        bufferSize &= ~i;
+	    _defaultsUSBIn.module = module;
+	    _defaultsUSBIn.bufferSize = bufferSize;
+        _defaultsUSBIn.modPrivate = (void*)usbAudio;
+	    list.push_back(_defaultsUSBIn);
+        LOGW("use USB audio in as default");
 
-    _defaultsIn.module = module;
-    _defaultsIn.bufferSize = bufferSize;
 
-    list.push_back(_defaultsIn);
+	    bufferSize = _defaultsIn.bufferSize;
 
-    return NO_ERROR;
+	    for (size_t i = 1; (bufferSize & ~i) != 0; i <<= 1)
+	        bufferSize &= ~i;
+
+	    _defaultsIn.module = module;
+	    _defaultsIn.bufferSize = bufferSize;
+        _defaultsIn.modPrivate = (void*)builtinAudio;
+	    list.push_back(_defaultsIn);
+        LOGW("use AML audio in as default");
+
+	        return NO_ERROR;
 }
 
-static status_t s_open(alsa_handle_t *handle, uint32_t devices, int mode, uint32_t channels)
+static status_t s_open(alsa_handle_t *handle, uint32_t devices, int mode)
 {
-    // Close off previously opened device.
-    // It would be nice to determine if the underlying device actually
-    // changes, but we might be recovering from an error or manipulating
+	// Close off previously opened device.
+	// It would be nice to determine if the underlying device actually
+	// changes, but we might be recovering from an error or manipulating
     // mixer settings (see asound.conf).
     //
+    LOGD("open called for devices %08x in mode %d...", devices, mode);
+    if( devices == 0 ){
+    	return BAD_VALUE;
+	}
     s_close(handle);
-    direction(handle);
-    snd_pcm_stream_name(direction(handle));
 
-    LOGI("open called for devices %08x in mode %d...", devices, mode);
+    pthread_mutex_lock(&handle->mLock);
 
     const char *stream = streamName(handle);
     const char *devName = deviceName(handle, devices, mode);
+    int err,card;
+    char prop[20],dev_Name[20],card_name[32]; 
+ LOGD("input handle: %s, devName = %s \n", (char*)handle->modPrivate, devName);
+#if 1 
+    if ((direction(handle) == SND_PCM_STREAM_CAPTURE)/*||(direction(handle) == SND_PCM_STREAM_PLAYBACK)*/){
+        card = getDeviceNum(direction(handle), card_name);
+	LOGD("card : %d\n", card);
 
-    int err;
+        if(card >= 0){
+           // sprintf(dev_Name,"plug:SLAVE='hw:%d,0'",card);
+            sprintf(dev_Name, "hw:%d", card);
+            devName = dev_Name;
+        }
+        // if we want usb-audio, but returned builtin-audio, return error.
+        // audiopolicymanager should try next card
+        LOGD("card name: %s\n", card_name);
+        LOGD("devName: %s\n", devName);
+        if(strncmp(card_name,"AML", 3) == 0 && strcmp((char*)handle->modPrivate, "usb-audio") == 0){
+          
+          pthread_mutex_unlock(&handle->mLock);
+          LOGD("You are request usb-audio with usb's params, but returned builtin-audio card\n");
+          return NO_INIT;
+        }
+   }
+    if(direction(handle) == SND_PCM_STREAM_PLAYBACK){
+		card = snd_card_get_aml_card();
+		LOGD("SND_PCM_STREAM_PLAYBACK  card : %d\n", card);
 
+		sprintf(dev_Name, "hw:%d", card);
+		devName = dev_Name;
+    }
+#else
+
+	if(direction(handle) == SND_PCM_STREAM_CAPTURE){
+		sprintf(dev_Name, "hw:0");
+		devName = dev_Name;
+    	}
+
+#endif	
     for (;;) {
         // The PCM stream is opened in blocking mode, per ALSA defaults.  The
         // AudioFlinger seems to assume blocking mode too, so asynchronous mode
         // should not be used.
+         LOGD("---- devName = %s \n", devName);
+
         err = snd_pcm_open(&handle->handle, devName, direction(handle),
                 SND_PCM_ASYNC);
         if (err == 0) break;
@@ -503,12 +644,15 @@ static status_t s_open(alsa_handle_t *handle, uint32_t devices, int mode, uint32
     if (err < 0) {
         // None of the Android defined audio devices exist. Open a generic one.
         devName = "default";
+         LOGD("-r-- devName = %s \n", devName);
+
         err = snd_pcm_open(&handle->handle, devName, direction(handle), 0);
     }
 
     if (err < 0) {
         LOGE("Failed to Initialize any ALSA %s device: %s",
                 stream, strerror(err));
+	 pthread_mutex_unlock(&handle->mLock);
         return NO_INIT;
     }
 
@@ -521,11 +665,14 @@ static status_t s_open(alsa_handle_t *handle, uint32_t devices, int mode, uint32
     handle->curDev = devices;
     handle->curMode = mode;
 
+    pthread_mutex_unlock(&handle->mLock);
     return err;
 }
 
 static status_t s_close(alsa_handle_t *handle)
 {
+    pthread_mutex_lock(&handle->mLock);
+
     status_t err = NO_ERROR;
     snd_pcm_t *h = handle->handle;
     handle->handle = 0;
@@ -536,81 +683,9 @@ static status_t s_close(alsa_handle_t *handle)
         err = snd_pcm_close(h);
     }
 
+    pthread_mutex_unlock(&handle->mLock);
     return err;
 }
-
-/*
-    this is same as s_close, but don't discard
-    the device/mode info. This way we can still
-    close the device, hit idle and power-save, reopen the pcm
-    for the same device/mode after resuming
-*/
-static status_t s_standby(alsa_handle_t *handle)
-{
-    int ret;
-    status_t err = NO_ERROR;  
-    snd_pcm_t *h = handle->handle;
-    handle->handle = 0;
-    LOGD("s_standby: handle %p h %p", handle, h);
-    if (h) {
-        LOGE("s_standby  handle\n");
-        err = snd_pcm_close(h);
-        if(err != NO_ERROR) {
-            LOGE("s_standby: pcm_close failed for handle with err %d", err);
-        }
-    }
-
-    h = handle->handle;
-    handle->handle = 0;
-
-    if (h) {
-          LOGE("s_standby handle h %p\n", h);
-        err = snd_pcm_close(h);
-        if(err != NO_ERROR) {
-            LOGE("s_standby: pcm_close failed for handle with err %d", err);
-        }
-       // disableDevice(handle);
-    }
-
-    return err;
-}
-
-/*static status_t s_standby(alsa_handle_t *handle)
-{
-    //hw specific modules may choose to implement
-    //this differently to gain a power savings during
-    //standby
-    //snd_pcm_drain (handle->handle);
-    //return NO_ERROR;
-    //Changed standby to the same as in omap3 alsa module source to prevent the clicking noise on gen8, it seems also to improve deep sleep...
-    status_t err = NO_ERROR;
-    snd_pcm_t *h = handle->handle;
-    handle->handle = 0;
-    LOGD("In omap3 standby\n");
-    if (h) {
-        snd_pcm_drain(h);
-        err = snd_pcm_close(h);
-        if (err)
-            LOGE("Failed closing ALSA stream: %s", snd_strerror(err));
-        LOGD("called drain&close\n");
-    }
-
-    return err;
-}*/
- 
-/*static status_t s_standby(alsa_handle_t *handle)
-{
-    //hw specific modules may choose to implement
-    //this differently to gain a power savings during
-    //standby   
-    snd_pcm_t *h = handle->handle;
-    handle->handle = 0;
-    snd_pcm_drain (h);
-    return NO_ERROR;
-	
-}*/
-
-
 
 static status_t s_route(alsa_handle_t *handle, uint32_t devices, int mode)
 {
@@ -618,7 +693,7 @@ static status_t s_route(alsa_handle_t *handle, uint32_t devices, int mode)
 
     if (handle->handle && handle->curDev == devices && handle->curMode == mode) return NO_ERROR;
 
-    return s_open(handle, devices, mode,  handle->curChannels);
+    return s_open(handle, devices, mode);
 }
 
 }

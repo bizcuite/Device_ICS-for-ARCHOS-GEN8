@@ -112,7 +112,6 @@ PRODUCT_PACKAGES := \
 	Apollo \
 	Trebuchet \
 	MusicFX \
-	DSPManager \
 	SpareParts \
 	Setting \
 	Camera \
@@ -219,7 +218,10 @@ PRODUCT_PROPERTY_OVERRIDES := \
 	alsa.mixer.playback.master=default \
 	alsa.mixer.capture.master=Analog \
 	ro.setupwizard.enable_bypass=1 \
-	ro.telephony.default_network=0 
+	ro.telephony.default_network=0 \
+	dalvik.vm.heapstartsize=5m \
+	dalvik.vm.heapgrowthlimit=48m \
+	dalvik.vm.heapsize=256m 
 	
 
 

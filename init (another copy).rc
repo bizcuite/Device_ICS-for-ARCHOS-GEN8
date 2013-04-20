@@ -28,7 +28,6 @@ loglevel 8
  
     export BT_FW_PATH /lib/firmware
     export DSP_PATH /system/lib/dsp
-    export DEFAULT_BASEIMAGE /system/lib/dsp/baseimage.dof
     export QOSDYN_FILE /system/lib/dsp/qosdyn_3430.dll64P
     export PM_TBLFILE /system/etc/policytable.tbl
 
@@ -87,7 +86,7 @@ loglevel 8
     mkdir /sd-ext 0771 system system
     mkdir /sdcard 0777 root root
 
-    write /proc/sys/kernel/panic_on_oops 0
+    write /proc/sys/kernel/panic_on_oops 1
     write /proc/sys/kernel/hung_task_timeout_secs 0
     write /proc/cpu/alignment 4
     write /proc/sys/kernel/sched_latency_ns 10000000
@@ -117,7 +116,7 @@ loglevel 8
     chown system system /dev/cpuctl/bg_non_interactive/tasks
     chmod 0777 /dev/cpuctl/bg_non_interactive/tasks
     # 5.0 %
-    write /dev/cpuctl/bg_non_interactive/cpu.shares 52
+#    write /dev/cpuctl/bg_non_interactive/cpu.shares 52
 
 # Allow everybody to read the xt_qtaguid resource tracking misc dev.
 # This is needed by any process that uses socket tagging.
@@ -136,7 +135,7 @@ loglevel 8
 
      mount ext4 /dev/block/mmcblk1p1 /mnt/storage
      mount vfat /dev/block/mmcblk1p1 /mnt/storage
-     mount ext3 /dev/block/mmcblk0p2 /mnt/system
+    mount ext3 /dev/block/mmcblk0p2 /mnt/system
 
 #    mount ext3 /dev/block/mmcblk0p4 /data nosuid nodev
     mount ext4 loop@/mnt/storage/data_ICS.img /data nosuid nodev
@@ -159,7 +158,7 @@ loglevel 8
     mkdir /cache/lost+found 0770 root root
 
 #fix permissions for market - thanks Wilsey
-#    exec /system/xbin/sh /system/xbin/fix_permissions
+    exec /system/xbin/sh /system/xbin/fix_permissions
 
 
 # on post-fs-data
@@ -178,17 +177,6 @@ loglevel 8
     # Do this before we mount cache so eventually we can use cache for
     # storing dumps on platforms which do not have a dedicated dump partition.
     mkdir /data/dontpanic 0750 root log
-
-    # Collect apanic data, free resources and re-arm trigger
-    copy /proc/apanic_console /data/dontpanic/apanic_console
-    chown root log /data/dontpanic/apanic_console
-    chmod 0640 /data/dontpanic/apanic_console
-
-    copy /proc/apanic_threads /data/dontpanic/apanic_threads
-    chown root log /data/dontpanic/apanic_threads
-    chmod 0640 /data/dontpanic/apanic_threads
-
-    write /proc/apanic_console 1
 
     # create basic filesystem structure
     mkdir /data/misc 01771 system misc
@@ -235,16 +223,37 @@ loglevel 8
 #UPGRADE
 
 ####TEST USB DRIVER
+
+
 #    insmod /lib/modules/musb_hdrc.ko mode_default=1
+#    insmod /lib/modules/g_android.ko
+
+    insmod /lib/modules/usb_debug.ko
     insmod /lib/modules/musb_hdrc.ko mode_default=2
+    insmod /lib/modules/cdc-acm.ko
     insmod /lib/modules/gadgetfs.ko
     insmod /lib/modules/g_android.ko
+    insmod /lib/modules/g_blockdev_storage.ko
+    insmod /lib/modules/g_cdc.ko
+    insmod /lib/modules/g_ether.ko
+    insmod /lib/modules/g_file_storage.ko file=/dev/block/mmcblk1p1
+    insmod /lib/modules/g_serial.ko
+    insmod /lib/modules/g_zero.ko
+    insmod /lib/modules/keyspan.ko
+    insmod /lib/modules/musb_hdrc.ko
+    insmod /lib/modules/usbserial.ko
+    
+
+exec /system/xbin/log_kernel.sh
 
 #####END TEST USB DRIVER
-# alsa sound
+
+ # alsa sound
     mkdir /dev/snd
-#create nodes
-exec /system/xbin/create_nodes_alsa.sh
+
+    #create nodes
+
+    exec /system/xbin/create_nodes_alsa.sh
 
 # change permissions for alsa nodes
     chown audio audio /dev/snd/controlC0
@@ -273,12 +282,17 @@ exec /system/xbin/create_nodes_alsa.sh
     insmod /lib/modules/omap_previewer.ko
     insmod /lib/modules/omap_resizer.ko
     insmod /lib/modules/omap_voutlib.ko
-    insmod /lib/modules/omap_vout.ko vid1_static_vrfb_alloc=0
+    insmod /lib/modules/omap_vout.ko vid1_static_vrfb_alloc=1
+    insmod /lib/modules/mailbox.ko
+    insmod /lib/modules/mailbox_mach.ko
+    insmod /lib/modules/dspbridge.ko
+#    insmod /lib/modules/bridgedriver.ko base_img=/system/lib/dsp/baseimage.dof
+    #insmod /system/lib/dsp/bridgedriver.ko base_img=/system/lib/dsp/baseimage.dof
     insmod /lib/modules/hdmitx.ko
     insmod /lib/modules/nwolc.ko
     insmod /lib/modules/fuse.ko
     insmod /lib/modules/tun.ko
-    insmod /lib/modules/xt_qtaguid.ko
+
 
 # change permissions for bridge.  Symlink search directory
     chmod 0777 /dev/DspBridge
@@ -340,7 +354,7 @@ exec /system/xbin/create_nodes_alsa.sh
     chmod 0660 /dev/ttyS0
     chown bluetooth bluetooth /dev/ttyS0
     chown bluetooth bluetooth /sys/class/rfkill/rfkill0/state
-    chmod 0777 /sys/class/rfkill/rfkill0/state
+    chmod 0660 /sys/class/rfkill/rfkill0/state
     write /sys/class/rfkill/rfkill0/state 0
 
 # devos, create all the /dev needed for avos
@@ -393,8 +407,6 @@ on boot
     chown system system /dev/android_adb_enable
     start adbd
 
-    setprop windowsmgr.max_events_per_sec 65
-
 # Memory management.  Basic kernel parameters, and allow the high
 # level system server to be able to adjust the kernel OOM driver
 # parameters to match how it is managing things.
@@ -405,16 +417,7 @@ on boot
     chown root system /sys/module/lowmemorykiller/parameters/minfree
     chmod 0664 /sys/module/lowmemorykiller/parameters/minfree
 
-    # Tweak background writeout
-    write /proc/sys/vm/dirty_expire_centisecs 200
-    write /proc/sys/vm/dirty_background_ratio  5
 
-    # Permissions for System Server and daemons.
-    chown radio system /sys/android_power/state
-    chown radio system /sys/android_power/request_state
-    chown radio system /sys/android_power/acquire_full_wake_lock
-    chown radio system /sys/android_power/acquire_partial_wake_lock
-    chown radio system /sys/android_power/release_wake_lock
     chown system system /sys/power/state
     chown radio system /sys/power/wake_lock
     chown radio system /sys/power/wake_unlock
@@ -455,17 +458,12 @@ on boot
     write /sys/power/sr_vdd1_autocomp 1
     write /sys/power/sr_vdd2_autocomp 1
 
-    # Enabling Smartreflex
-    write /debug/pm_debug/smartreflex/sr_mpu/autocomp 1 
-    write /debug/pm_debug/smartreflex/sr_core/autocomp 1
-
-
     # Enabling multi-touch
     write /sys/module/hid_hanvon/parameters/tsp_emulation  N
     
     # Disable rotation of touchscreen and sensor for 101
-    write /sys/module/hid_hanvon/parameters/rotate180 Y
-    write /sys/module/mma7660fc/parameters/rotate180 Y
+    write /sys/module/hid_hanvon/parameters/rotate180 N
+    write /sys/module/mma7660fc/parameters/rotate180 N
        
     setprop media.stagefright.enable-player true
     setprop media.stagefright.enable-http true
@@ -493,21 +491,12 @@ write /sys/class/leds/lcd-backlight/brightness 255
 # Define TCP buffer sizes for various networks
 #   ReadMin, ReadInitial, ReadMax, WriteMin, WriteInitial, WriteMax,
     setprop net.tcp.buffersize.default 4096,87380,110208,4096,16384,110208
-    setprop net.tcp.buffersize.wifi    4095,87380,110208,4096,16384,110208
+    setprop net.tcp.buffersize.wifi    524288,1048576,2097152,262144,524288,1048576
+    setprop net.tcp.buffersize.lte     524288,1048576,2097152,262144,524288,1048576
     setprop net.tcp.buffersize.umts    4094,87380,110208,4096,16384,110208
     setprop net.tcp.buffersize.hspa    4094,87380,262144,4096,16384,262144
     setprop net.tcp.buffersize.edge    4093,26280,35040,4096,16384,35040
     setprop net.tcp.buffersize.gprs    4092,8760,11680,4096,8760,11680
-
-# allow system to modify ksm control files
-    chown root system /sys/kernel/mm/ksm/pages_to_scan
-    chmod 0664 /sys/kernel/mm/ksm/pages_to_scan
-    chown root system /sys/kernel/mm/ksm/sleep_millisecs
-    chmod 0664 /sys/kernel/mm/ksm/sleep_millisecs
-    chown root system /sys/kernel/mm/ksm/run
-    chmod 0664 /sys/kernel/mm/ksm/run
-    write /sys/kernel/mm/ksm/sleep_millisecs 1500
-    write /sys/kernel/mm/ksm/pages_to_scan 256
 
 chmod 0666 /dev/pvrsrvkm
     start pvrsrvinit
@@ -639,7 +628,7 @@ service surfaceflinger /system/bin/surfaceflinger
     class main
     user system
     group graphics
-    onrestart restart zygote
+#    onrestart restart zygote
 
 service zygote /system/bin/app_process -Xzygote /system/bin --zygote --start-system-server
     class main
@@ -667,7 +656,7 @@ service drm /system/bin/drmserver
 
 service media /system/bin/mediaserver
     class main
-    user media
+    user media root
 #    group audio camera inet net_bt net_bt_admin 
     group system audio camera graphics inet net_bt net_bt_admin net_raw system net_bw_acct drmrpc
     ioprio rt 4
@@ -675,28 +664,10 @@ service media /system/bin/mediaserver
 service dbus /system/bin/logwrapper /system/bin/dbus-daemon --system --nofork
     class main
     socket dbus stream 660 bluetooth bluetooth
-    socket bluetooth stream 660 bluetooth bluetooth
-    socket dbus_bluetooth stream 660 bluetooth bluetooth
     user bluetooth
-    group bluetooth net_bt_admin misc inet
+    group bluetooth net_bt_admin misc system
 
-
-#service bluetoothd /system/bin/logwrapper /system/bin/bluetoothd -n /system/etc/bluetooth/main.conf
-#   class main
-#   socket bluetooth stream 660 bluetooth bluetooth
-#   socket dbus_bluetooth stream 660 bluetooth bluetooth
-   # init.rc does not yet support applying capabilities, so run as root and
-   # let bluetoothd drop uid to bluetooth with the right linux capabilities
-#   group bluetooth net_bt_admin misc
-#   disabled
-
-service uim /system/bin/logwrapper /system/xbin/uim /dev/ttyS0 3000000 1 /sys/uim/pid 19
-   class main
-   user root
-   group net_bt_admin media bluetooth system
-   oneshot
-
-service bluetoothd /system/bin/logwrapper /system/bin/bluetoothd -n /system/etc/bluetooth/main.conf
+service bluetoothd /system/bin/bluetoothd -n
    class main
    socket bluetooth stream 660 bluetooth bluetooth
    socket dbus_bluetooth stream 660 bluetooth bluetooth
@@ -705,56 +676,26 @@ service bluetoothd /system/bin/logwrapper /system/bin/bluetoothd -n /system/etc/
    group bluetooth net_bt_admin misc
    disabled
 
+service uim /system/bin/logwrapper /system/xbin/uim /dev/ttyS0 3000000 1 /sys/uim/pid 19
+   class core
+   user root
+   group net_bt_admin media bluetooth system
+   oneshot
 
-#service hciattach /system/bin/logwrapper /system/bin/hciattach -l 
-#    class main
-#    user root
-# changing user to root from bluetooth is a potential security issue
-# service hciattach_legacy is used instead of hciattach because, we dont
-# have nodes named ttyHS0
-#    group bluetooth net_bt_admin misc
-#    disabled
-#    oneshot
 
-service hciattach_legacy /system/bin/logwrapper /system/bin/hciattach -n /dev/ttyS0 texas 3000000
-    class main
-    user root
-# changing user to root from bluetooth is a potential security issue
-    group bluetooth net_bt_admin misc
-    disabled
-    oneshot
 
-service hfag /system/bin/logwrapper /system/bin/sdptool add --channel=10 HFAG
-    class main
-    user bluetooth
-    group bluetooth net_bt_admin
-    disabled
-    oneshot
 
-service hsag /system/bin/logwrapper /system/bin/sdptool add --channel=11 HSAG
-    class main
-    user bluetooth
-    group bluetooth net_bt_admin
-    disabled
-    oneshot
+##UPGRADE 07/11
 
-service opush /system/bin/logwrapper /system/bin/sdptool add --channel=12 OPUSH
-    class main
-    user bluetooth
-    group bluetooth net_bt_admin
-    disabled
-    oneshot
 
-service pbap /system/bin/logwrapper /system/bin/sdptool add --channel=19 PBAP
-    class main
-    user bluetooth
-    group bluetooth net_bt_admin
-    disabled
-    oneshot
+
+##END UPGRADE 07/11
 
 service installd /system/bin/installd
     class main
     socket installd stream 600 system system
+
+#ADDED FOR TEST IF BOOTLOOP
 
 service racoon /system/bin/racoon
     class main
@@ -784,35 +725,26 @@ service dumpstate /system/bin/dumpstate -s
     disabled
     oneshot
 
+##ADDED FOR BOOTLOOP TEST
+
 ##########TEST WIFI SGS####
 service wlan_loader /system/bin/wlan_loader -i /data/misc/wifi/tiwlan.ini -f /system/etc/wifi/firmware.bin -e /data/misc/wifi/wlanconf.nvs
     class main    
     disabled
     oneshot
 
-#service wpa_supplicant /system/bin/wpa_supplicant -dd -Dtiwlan0 -itiwlan0 -c /data/misc/wifi/wpa_supplicant.conf
+service wpa_supplicant /system/bin/wpa_supplicant -dd -Dtiwlan0 -itiwlan0 -c /data/misc/wifi/wpa_supplicant.conf
 	#   we will start as root and wpa_supplicant will switch to user wifi
 	#   after setting up the capabilities required for WEXT
 	#   user wifi
 	#   group wifi inet keystore
-#	class main
-#	socket wpa_tiwlan0 dgram 660 wifi wifi
-#	disabled
-#	oneshot
+	class main
+	socket wpa_tiwlan0 dgram 660 wifi wifi
+	disabled
+	oneshot
 
-#service dhcpcd_tiwlan0 /system/bin/dhcpcd -aABKL
-#    class main
-#    disabled
-#    oneshot
-
-service wpa_supplicant /system/bin/wpa_supplicant -Dtiwlan0 -itiwlan0 -c /data/misc/wifi/wpa_supplicant.conf
+service dhcpcd_tiwlan0 /system/bin/dhcpcd -aABKL
     class main
-    socket wpa_tiwlan0 dgram 660 wifi wifi
-    disabled
-    oneshot
-
-service dhcpcd_tiwlan0 /system/bin/dhcpcd -ABKL -d
-   class main
     disabled
     oneshot
 
@@ -845,9 +777,8 @@ service iprenew_bnep0 /system/bin/dhcpcd -n
 
 
 service pvrsrvinit /system/bin/pvrsrvinit
-    class core
+    class main
     user root
-    group graphics system
     oneshot
 
 service load_alsa /system/xbin/load_alsa.sh
@@ -862,19 +793,16 @@ service  omx_pm /system/bin/logwrapper /system/bin/OMXPolicyManager
 service battery /system/bin/batteryd -d
 	class main
 
-#service baseimage_a /system/bin/logwrapper /system/bin/cexec.out -v -T /system/lib/dsp/baseimage.dof
-#    class core
-#    user  root
-#    group root graphics
-#    oneshot
 
-# load DSP firmware
-service baseimage_a /system/bin/logwrapper /system/bin/cexec.out -v -T /system/lib/dsp/baseimage.dof
-    class core
-    user root
-    group system audio camera graphics inet net_bt net_bt_admin net_raw media
+service tsenabler /system/bin/logwrapper /system/bin/ts_test/usb_ts_enable --verify
+    class core 
     oneshot
 
+service baseimage_a /system/bin/logwrapper /system/bin/cexec.out -v -T /system/lib/dsp/baseimage.dof
+    class core
+    user  root
+    group root graphics
+    oneshot
 
 service update_market /system/bin/logwrapper /system/xbin/sh /system/xbin/update_market.sh
     user root
@@ -882,12 +810,6 @@ service update_market /system/bin/logwrapper /system/xbin/sh /system/xbin/update
     oneshot
 
 service kernel_log /system/bin/logwrapper /system/xbin/sh /system/xbin/log_kernel1.sh
-    user root
-    group root
-    oneshot
-
-#service bluetooth_start /system/xbin/sh /system/xbin/start_BT.sh 
-service bluetooth_start /system/xbin/hciconfig hci0 up
     user root
     group root
     oneshot
