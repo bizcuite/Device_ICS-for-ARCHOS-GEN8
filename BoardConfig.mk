@@ -59,8 +59,26 @@ ENABLE_WTF_USE_ACCELERATED_COMPOSITING := true
 ENABLE_WEBGL := true
 BOARD_EGL_CFG := device/archos/g8/egl.cfg
 BOARD_USES_OVERLAY := true
+<<<<<<< HEAD
 #ok with new driver GPU
 USE_OPENGL_RENDERER := true
+=======
+OMAP3_GL := true
+BOARD_USES_HGL := true
+#Crash vdec_h264 codec compilation
+#COMMON_GLOBAL_CFLAGS += -DSURFACEFLINGER_FORCE_SCREEN_RELEASE
+COMMON_GLOBAL_CFLAGS += -DMISSING_EGL_EXTERNAL_IMAGE \
+                        -DMISSING_EGL_PIXEL_FORMAT_YV12  \
+                        -DMISSING_GRALLOC_BUFFERS
+
+
+#to try later
+#ENABLE_SVG := true
+#WEBCORE_INSTRUMENTATION := true
+#BOARD_NO_ALLOW_DEQUEUE_CURRENT_BUFFER := true
+#crash the tab
+#USE_OPENGL_RENDERER := true
+>>>>>>> ccee8116379f32b5671c360aa793aafe1305ee16
 
 
 
