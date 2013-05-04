@@ -32,33 +32,14 @@ endif
 PRODUCT_COPY_FILES := \
 	$(LOCAL_KERNEL):kernel \
 	device/archos/g8/ueventd.rc:root/ueventd.rc \
-	device/archos/g8/system/scripts/create_nodes.sh:system/xbin/create_nodes.sh \
-	device/archos/g8/system/scripts/log_kernel.sh:system/xbin/log_kernel.sh \
-	device/archos/g8/system/scripts/log_kernel1.sh:system/xbin/log_kernel1.sh \
-	device/archos/g8/system/binaries/su:system/xbin/su	\
-	device/archos/g8/system/scripts/create_nodes_alsa.sh:system/xbin/create_nodes_alsa.sh \
-	device/archos/g8/system/scripts/load_modules.sh:system/xbin/load_modules.sh \
-	device/archos/g8/system/scripts/load_alsa.sh:system/xbin/load_alsa.sh \
-	device/archos/g8/system/scripts/archos.inc:root/archos.inc \
-	device/archos/g8/system/scripts/update_market.sh:/system/xbin/update_market.sh \
-	device/archos/g8/system/binaries/pvrsrvinit:system/bin/pvrsrvinit	\
-	device/archos/g8/system/binaries/create_nvs:system/xbin/create_nvs \
-	device/archos/g8/system/binaries/abcbox:system/xbin/abcbox \
-	device/archos/g8/system/binaries/fix_permissions:system/xbin/fix_permissions \
-	device/archos/g8/system/idc_files/goodix-gt801.idc:system/usr/idc/goodix-gt801.idc	\
-	device/archos/g8/system/idc_files/Vendor_227d_Product_070a.idc:system/usr/idc/Vendor_227d_Product_070a.idc	\
-	device/archos/g8/system/idc_files/Vendor_227d_Product_0709.idc:system/usr/idc/Vendor_227d_Product_0709.idc	\
-	device/archos/g8/system/idc_files/Vendor_227d_Product_0a1a.idc:system/usr/idc/Vendor_227d_Product_0a1a.idc	\
-	device/archos/g8/system/idc_files/Vendor_227d_Product_0a19.idc:system/usr/idc/Vendor_227d_Product_0a19.idc	\
-	device/archos/g8/system/etc/egl/egl.cfg:system/lib/egl/egl.cfg \
-	device/archos/g8/system/etc/hw/sensors.omap3.so:system/lib/hw/sensors.omap3.so	\
-	device/archos/g8/system/etc/bluetooth/main.conf:system/etc/bluetooth/main.conf	\
-	device/archos/g8/system/etc/vold.fstab:system/etc/vold.fstab	\
-	device/archos/g8/system/etc/vold.conf:system/etc/vold.conf	\
-	device/archos/g8/system/etc/asound.conf:system/etc/asound.conf \
-	device/archos/g8/system/etc/egl/egl.cfg:system/lib/egl/egl.cfg \
-	device/archos/g8/system/etc/media_profiles.xml:system/etc/media_profiles.xml \
-	device/archos/g8/system/etc/media_codecs.xml:system/etc/media_codecs.xml \
+	device/archos/g8/prebuilt/scripts/create_nodes.sh:system/xbin/create_nodes.sh \
+	device/archos/g8/prebuilt/scripts/log_kernel.sh:system/xbin/log_kernel.sh \
+	device/archos/g8/prebuilt/scripts/log_kernel1.sh:system/xbin/log_kernel1.sh \
+	device/archos/g8/prebuilt/scripts/create_nodes_alsa.sh:system/xbin/create_nodes_alsa.sh \
+	device/archos/g8/prebuilt/scripts/load_modules.sh:system/xbin/load_modules.sh \
+	device/archos/g8/prebuilt/scripts/load_alsa.sh:system/xbin/load_alsa.sh \
+	device/archos/g8/prebuilt/scripts/archos.inc:root/archos.inc \
+	device/archos/g8/prebuilt/scripts/update_market.sh:/system/xbin/update_market.sh \
 	frameworks/base/data/etc/android.hardware.wifi.xml:system/etc/permissions/android.hardware.wifi.xml \
 	frameworks/base/data/etc/android.hardware.usb.accessory.xml:system/etc/permissions/android.hardware.usb.accessory.xml \
 	frameworks/base/data/etc/com.tmobile.software.themes.xml:system/etc/permissions/com.tmobile.software.themes.xml \
@@ -80,16 +61,14 @@ PRODUCT_COPY_FILES := \
 	frameworks/base/data/etc/android.hardware.usb.accessory.xml:system/etc/permissions/android.hardware.usb.accessory.xml \
 	frameworks/base/data/etc/android.hardware.usb.host.xml:system/etc/permissions/android.hardware.usb.host.xml \
 	packages/wallpapers/LivePicker/android.software.live_wallpaper.xml:system/etc/permissions/android.software.live_wallpaper.xml \
-	device/archos/g8/firmware/TIInit_7.2.31.bts:system/etc/firmware/TIInit_7.2.31.bts \
-	device/archos/g8/system/app/FileManager.apk:system/app/FileManager.apk \
-	device/archos/g8/system/app/Home.apk:system/app/Home.apk \
-	device/archos/g8/system/app/Music.apk:system/app/Music.apk
+	device/archos/g8/firmware/TIInit_7.2.31.bts:system/etc/firmware/TIInit_7.2.31.bts 
 #	device/archos/g8/system/lib/hw/gralloc.omap3.so:system/lib/hw/gralloc.omap3.so
 
 	
 PRODUCT_PACKAGES := \
 	liba2dp \
 	lights.omap3 \
+	sensors.omap3.so \
 	libexifgnu \
 	hwcomposer.default \
 	overlay.omap3 \
@@ -226,6 +205,8 @@ PRODUCT_PROPERTY_OVERRIDES := \
 
 
 PRODUCT_CHARACTERISTICS := tablet,nosdcard
+
+#PRODUCT_LOCALES += mdpi 
 
 PRODUCT_TAGS := dalvik.gc.type-precise
 
