@@ -114,7 +114,6 @@ static alsa_handle_t _defaultsOut = {
     latency     : 2000000, // Desired Delay in usec
 //    bufferSize  : DEFAULT_SAMPLE_RATE / 5, // Desired Number of samples
 <<<<<<< HEAD
-<<<<<<< HEAD
 //    bufferSize  : DEFAULT_SAMPLE_RATE / 10, // Desired Number of samples
    bufferSize  : 4096, // Desired Number of samples TEST 4096 like others driver, maybe fix lag in youtube
 //   bufferSize  : 3072, // Desired Number of samples TEST 4096 like others driver, maybe fix lag in youtube
@@ -122,11 +121,6 @@ static alsa_handle_t _defaultsOut = {
 //fix was already here when i had uploaded sources. I let this commit like a knowledge of the fix, just replace bufferSize value by 4096
    bufferSize  : 4096, // Desired Number of samples, this fix lag in youtube with normal quality/hd low def
 >>>>>>> ccee8116379f32b5671c360aa793aafe1305ee16
-=======
-    bufferSize  : DEFAULT_SAMPLE_RATE / 10, // Desired Number of samples
-//   bufferSize  : 4096, // Desired Number of samples TEST 4096 like others driver, maybe fix lag in youtube
-//   bufferSize  : 3072, // Desired Number of samples TEST 4096 like others driver, maybe fix lag in youtube
->>>>>>> Lots of change - OpenGL libs from I9003 - Boardconfig.mk - device.mk - Script to make images - sensors HAL test
     mLock       : PTHREAD_MUTEX_INITIALIZER,
 //    mmap        : 0,
     modPrivate  : 0,

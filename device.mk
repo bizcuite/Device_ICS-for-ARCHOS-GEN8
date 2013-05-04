@@ -32,7 +32,6 @@ endif
 PRODUCT_COPY_FILES := \
 	$(LOCAL_KERNEL):kernel \
 	device/archos/g8/ueventd.rc:root/ueventd.rc \
-<<<<<<< HEAD
 	device/archos/g8/system/scripts/create_nodes.sh:system/xbin/create_nodes.sh \
 	device/archos/g8/system/scripts/log_kernel.sh:system/xbin/log_kernel.sh \
 	device/archos/g8/system/scripts/log_kernel1.sh:system/xbin/log_kernel1.sh \
@@ -60,16 +59,6 @@ PRODUCT_COPY_FILES := \
 	device/archos/g8/system/etc/egl/egl.cfg:system/lib/egl/egl.cfg \
 	device/archos/g8/system/etc/media_profiles.xml:system/etc/media_profiles.xml \
 	device/archos/g8/system/etc/media_codecs.xml:system/etc/media_codecs.xml \
-=======
-	device/archos/g8/prebuilt/scripts/create_nodes.sh:system/xbin/create_nodes.sh \
-	device/archos/g8/prebuilt/scripts/log_kernel.sh:system/xbin/log_kernel.sh \
-	device/archos/g8/prebuilt/scripts/log_kernel1.sh:system/xbin/log_kernel1.sh \
-	device/archos/g8/prebuilt/scripts/create_nodes_alsa.sh:system/xbin/create_nodes_alsa.sh \
-	device/archos/g8/prebuilt/scripts/load_modules.sh:system/xbin/load_modules.sh \
-	device/archos/g8/prebuilt/scripts/load_alsa.sh:system/xbin/load_alsa.sh \
-	device/archos/g8/prebuilt/scripts/archos.inc:root/archos.inc \
-	device/archos/g8/prebuilt/scripts/update_market.sh:/system/xbin/update_market.sh \
->>>>>>> Lots of change - OpenGL libs from I9003 - Boardconfig.mk - device.mk - Script to make images - sensors HAL test
 	frameworks/base/data/etc/android.hardware.wifi.xml:system/etc/permissions/android.hardware.wifi.xml \
 	frameworks/base/data/etc/android.hardware.usb.accessory.xml:system/etc/permissions/android.hardware.usb.accessory.xml \
 	frameworks/base/data/etc/com.tmobile.software.themes.xml:system/etc/permissions/com.tmobile.software.themes.xml \
@@ -91,24 +80,16 @@ PRODUCT_COPY_FILES := \
 	frameworks/base/data/etc/android.hardware.usb.accessory.xml:system/etc/permissions/android.hardware.usb.accessory.xml \
 	frameworks/base/data/etc/android.hardware.usb.host.xml:system/etc/permissions/android.hardware.usb.host.xml \
 	packages/wallpapers/LivePicker/android.software.live_wallpaper.xml:system/etc/permissions/android.software.live_wallpaper.xml \
-<<<<<<< HEAD
 	device/archos/g8/firmware/TIInit_7.2.31.bts:system/etc/firmware/TIInit_7.2.31.bts \
 	device/archos/g8/system/app/FileManager.apk:system/app/FileManager.apk \
 	device/archos/g8/system/app/Home.apk:system/app/Home.apk \
 	device/archos/g8/system/app/Music.apk:system/app/Music.apk
-=======
-	device/archos/g8/firmware/TIInit_7.2.31.bts:system/etc/firmware/TIInit_7.2.31.bts 
->>>>>>> Lots of change - OpenGL libs from I9003 - Boardconfig.mk - device.mk - Script to make images - sensors HAL test
 #	device/archos/g8/system/lib/hw/gralloc.omap3.so:system/lib/hw/gralloc.omap3.so
 
 	
 PRODUCT_PACKAGES := \
 	liba2dp \
 	lights.omap3 \
-<<<<<<< HEAD
-=======
-	sensors.omap3.so \
->>>>>>> Lots of change - OpenGL libs from I9003 - Boardconfig.mk - device.mk - Script to make images - sensors HAL test
 	libexifgnu \
 	hwcomposer.default \
 	overlay.omap3 \
@@ -246,11 +227,6 @@ PRODUCT_PROPERTY_OVERRIDES := \
 
 PRODUCT_CHARACTERISTICS := tablet,nosdcard
 
-<<<<<<< HEAD
-=======
-#PRODUCT_LOCALES += mdpi 
-
->>>>>>> Lots of change - OpenGL libs from I9003 - Boardconfig.mk - device.mk - Script to make images - sensors HAL test
 PRODUCT_TAGS := dalvik.gc.type-precise
 
 
