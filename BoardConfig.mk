@@ -25,11 +25,18 @@ TARGET_PREBUILT_KERNEL := device/archos/g8/Kernel
 # Board properties
 TARGET_BOARD_PLATFORM := omap3
 TARGET_BOOTLOADER_BOARD_NAME := archos
+<<<<<<< HEAD
+=======
+ARCH_ARM_HAVE_ARMV7A := true
+>>>>>>> Lots of change - OpenGL libs from I9003 - Boardconfig.mk - device.mk - Script to make images - sensors HAL test
 TARGET_CPU_ABI := armeabi-v7a
 TARGET_CPU_ABI2 := armeabi
 ARCH_ARM_HAVE_VFP := true
 TARGET_ARCH_VARIANT_FPU := neon
+<<<<<<< HEAD
 # TARGET_CPU_SMP := true
+=======
+>>>>>>> Lots of change - OpenGL libs from I9003 - Boardconfig.mk - device.mk - Script to make images - sensors HAL test
 TARGET_ARCH_VARIANT := armv7-a-neon
 TARGET_ARCH_VARIANT_CPU := cortex-a8
 TARGET_ARCH_VARIANT_FPU := neon
@@ -37,6 +44,10 @@ TARGET_OMAP3 := true
 TARGET_GLOBAL_CFLAGS += -mtune=cortex-a8 -mfpu=neon -mfloat-abi=softfp
 TARGET_GLOBAL_CPPFLAGS += -mtune=cortex-a8 -mfpu=neon -mfloat-abi=softfp
 COMMON_GLOBAL_CFLAGS += -DTARGET_OMAP3 -DOMAP_COMPAT -DBINDER_COMPAT
+<<<<<<< HEAD
+=======
+OMAP_ENHANCEMENT := true
+>>>>>>> Lots of change - OpenGL libs from I9003 - Boardconfig.mk - device.mk - Script to make images - sensors HAL test
 ARCH_ARM_HAVE_TLS_REGISTER := false
 TARGET_arm_CFLAGS := -O3 -fomit-frame-pointer -fstrict-aliasing -funswitch-loops \
                         -fmodulo-sched -fmodulo-sched-allow-regmoves
@@ -60,6 +71,7 @@ ENABLE_WEBGL := true
 BOARD_EGL_CFG := device/archos/g8/egl.cfg
 BOARD_USES_OVERLAY := true
 <<<<<<< HEAD
+<<<<<<< HEAD
 #ok with new driver GPU
 USE_OPENGL_RENDERER := true
 =======
@@ -79,6 +91,10 @@ COMMON_GLOBAL_CFLAGS += -DMISSING_EGL_EXTERNAL_IMAGE \
 #crash the tab
 #USE_OPENGL_RENDERER := true
 >>>>>>> ccee8116379f32b5671c360aa793aafe1305ee16
+=======
+#ok with new driver GPU
+USE_OPENGL_RENDERER := true
+>>>>>>> Lots of change - OpenGL libs from I9003 - Boardconfig.mk - device.mk - Script to make images - sensors HAL test
 
 
 
@@ -153,16 +169,34 @@ BUILD_AMRNB_DECODER := 1
 BUILD_AMRWB_DECODER := 1
 BUILD_WMA_DECODER := 1
 
+<<<<<<< HEAD
+=======
+ifdef OMAP_ENHANCEMENT
+COMMON_GLOBAL_CFLAGS += -DOMAP_ENHANCEMENT -DTARGET_OMAP3
+endif
+
+>>>>>>> Lots of change - OpenGL libs from I9003 - Boardconfig.mk - device.mk - Script to make images - sensors HAL test
 #MISC
 WITH_JIT := true
 ENABLE_JSC_JIT := true
 JS_ENGINE := v8
+<<<<<<< HEAD
 #DEBUG_V8 := true
 #USE_ALT_JS_ENGINE := true
+=======
+HTTP := chrome
+
+#SENSORS
+SW_BOARD_USES_GSENSOR_TYPE := mma7660
+#SW_BOARD_GSENSOR_XY_REVERT := true
+SW_BOARD_GSENSOR_DIRECT_X := true
+SW_BOARD_GSENSOR_DIRECT_Y := true
+>>>>>>> Lots of change - OpenGL libs from I9003 - Boardconfig.mk - device.mk - Script to make images - sensors HAL test
 
 #adb has root
 ADDITIONAL_DEFAULT_PROPERTIES += ro.secure=0
 
+<<<<<<< HEAD
 #test
 #BOARD_USE_CID_ROTATE_34 := true
 # Remove this once CM merges the fix
@@ -176,3 +210,9 @@ COMMON_GLOBAL_CFLAGS += -DTARGET_OMAP3
 #Ne sert a rien
 BUILD_WITH_FULL_STAGEFRIGHT := true
 #DEFAULT_FB_NUM := 0
+=======
+PRODUCT_LOCALES += hdpi
+PRODUCT_AAPT_CONFIG := normal nodpi mdpi hdpi
+PRODUCT_AAPT_PREF_CONFIG := hdpi mdpi
+DEVICE_RESOLUTION := 1024x600
+>>>>>>> Lots of change - OpenGL libs from I9003 - Boardconfig.mk - device.mk - Script to make images - sensors HAL test
